@@ -1,0 +1,531 @@
+type: edu
+files:
+- name: src/platform/CodeSharingPlatform.java
+  visible: true
+  text: |
+    package platform;
+
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.web.bind.annotation.RestController;
+
+    @SpringBootApplication
+    @RestController
+    public class CodeSharingPlatform {
+
+        public static void main(String[] args) {
+            SpringApplication.run(CodeSharingPlatform.class, args);
+        }
+
+    }
+  learner_created: false
+- name: build.gradle
+  visible: true
+  text: |
+    plugins {
+        id 'org.springframework.boot' version '2.3.3.RELEASE'
+        id 'java'
+    }
+
+    apply plugin: 'io.spring.dependency-management'
+
+    sourceCompatibility = 11
+
+    repositories {
+        mavenCentral()
+    }
+
+    sourceSets.main.resources.srcDirs = ["src/resources"]
+
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+    }
+  learner_created: false
+- name: src/resources/application.properties
+  visible: true
+  text: |
+    server.port=8889
+    management.endpoints.web.exposure.include=*
+    management.endpoint.shutdown.enabled=true
+  learner_created: false
+- name: src/platform/Controllers/CodeShareController.java
+  visible: true
+  text: |
+    package platform.Controllers;
+
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.data.domain.Page;
+    import org.springframework.http.HttpHeaders;
+    import org.springframework.http.HttpStatus;
+    import org.springframework.http.MediaType;
+    import org.springframework.http.ResponseEntity;
+    import org.springframework.web.bind.annotation.*;
+    import platform.Models.CodeFragment;
+    import platform.Services.CodeFragmentService;
+
+    import java.time.LocalDate;
+    import java.time.LocalDateTime;
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Optional;
+
+    @RestController
+    public class CodeShareController {
+        private CodeFragment currentFragment = new CodeFragment();
+
+        @Autowired
+        CodeFragmentService codeFragmentService;
+
+        public String getCodeFragment() {
+            return "public static void main(String[] args) {\n" +
+                    "    SpringApplication.run(CodeSharingPlatform.class, args);\n}";
+        }
+
+        public String getCodeFragmentJson() {
+            return "{\n\"code\": \"" + getCodeFragment() + "\"\n}";
+        }
+
+        public String getCodeFragmentWeb(CodeFragment codeFragment) {
+            return "<html>\n" +
+                    "<head>\n" +
+                    "    <title>Code</title>\n" +
+                    "    <link rel=\"stylesheet\"\n" +
+                    "       href=\"//cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.1/build/styles/default.min.css\">\n" +
+                    "<script src=\"//cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.1/build/highlight.min.js\"></script>\n" +
+                    "<script>hljs.initHighlightingOnLoad();</script>\n" +
+                    "</head>\n" +
+                    "<body>\n" +
+                    "    <pre id=\"code_snippet\">\n" +
+                    "<code>\n" +
+                    codeFragment.getCode() +
+                    "</code>\n" +
+                    "</pre>\n" +
+                    "<span id=\"load_date\">" +
+                    codeFragment.getDate() +
+                    "</span>\n" +
+                    "</body>\n" +
+                    "</html>";
+        }
+
+        public String getLatest() {
+            String result = "<html>\n" +
+                    "<head>\n" +
+                    "    <title>Latest</title>\n" +
+                    "    <link rel=\"stylesheet\"\n" +
+                    "       href=\"//cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.1/build/styles/default.min.css\">\n" +
+                    "<script src=\"//cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.2.1/build/highlight.min.js\"></script>\n" +
+                    "<script>hljs.initHighlightingOnLoad();</script>\n" +
+                    "</head>\n" +
+                    "<body>\n";
+
+            Page<CodeFragment> results = codeFragmentService.findLatest();
+            for (CodeFragment c : results) {
+                result += "    <pre id=\"code_snippet\">\n" +
+                        "<code>\n" +
+                        c.getCode() +
+                        "</code>\n" +
+                        "</pre>\n" +
+                        "<span id=\"load_date\">" +
+                        c.getDate() +
+                        "</span>\n";
+
+            }
+            result += "</body>\n" +
+                    "</html>";
+            return result;
+        }
+
+        public String getNewCodeForm() {
+            return "<html>\n" +
+                    "<head>\n" +
+                    "    <title>Create</title>\n" +
+                    "<script>" +
+                    "function send() {\n" +
+                    "    let json = document.getElementById(\"code_snippet\").value;\n" +
+                    "    \n" +
+                    "    let xhr = new XMLHttpRequest();\n" +
+                    "    console.log(json);\n" +
+                    "    xhr.open(\"POST\", '/api/code/new', false);\n" +
+                    "    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');\n" +
+                    "    xhr.send(json);\n" +
+                    "    \n" +
+                    "    if (xhr.status == 200) {\n" +
+                    "      alert(\"Success!\");\n" +
+                    "    }\n" +
+                    "}\n" +
+                    "</script>\n" +
+                    "</head>\n" +
+                    "<body>\n" +
+                    "<textarea id=\"code_snippet\"></textarea><br>" +
+                    "<button id=\"send_snippet\" type=\"submit\" onclick=\"send()\">" +
+                    "Submit</button>" +
+                    "</body>\n" +
+                    "</html>";
+        }
+
+        /*
+        @GetMapping("/code")
+        public ResponseEntity<?> getCodeWeb() {
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "text/html");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(getCodeFragmentWeb());
+        }
+
+        @GetMapping(value = "/api/code", produces = MediaType.APPLICATION_JSON_VALUE)
+        public ResponseEntity<?> getCodeApi() {
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "application/json");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(currentFragment);
+        }
+
+         */
+
+        @GetMapping("/code/latest")
+        public ResponseEntity<?> getLatestWeb() {
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "text/html");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(getLatest());
+        }
+
+        @GetMapping("/code/{id}")
+        public ResponseEntity<?> getCodeWeb(@PathVariable Long id) {
+            Optional<CodeFragment> result = codeFragmentService.findById(id);
+            if (result.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "text/html");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(getCodeFragmentWeb(result.get()));
+        }
+
+        @GetMapping(value = "/api/code/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+        public ResponseEntity<?> getCodeApi(@PathVariable Long id) {
+            Optional<CodeFragment> result = codeFragmentService.findById(id);
+            if (result.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "application/json");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(result.get());
+        }
+
+        @GetMapping(value = "/api/code/latest", produces = MediaType.APPLICATION_JSON_VALUE)
+        public ResponseEntity<?> getLatestApi() {
+            Page<CodeFragment> result = codeFragmentService.findLatest();
+            if (result.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            List<CodeFragment> resultList = new ArrayList<>();
+            for (CodeFragment c : result) {
+                resultList.add(c);
+            }
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "application/json");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(resultList);
+        }
+
+        @PostMapping(value = "/api/code/new", consumes = MediaType.APPLICATION_JSON_VALUE)
+        public ResponseEntity<?> createNewCodeFragment(@RequestBody String input) {
+            //currentFragment.setCode(input.substring(9, input.length() - 2));
+            CodeFragment inputCode = new CodeFragment();
+            inputCode.setCode(input.substring(9, input.length() - 2));
+            //inputCode.setCode(input);
+            inputCode.setDate(LocalDateTime.now().toString());
+            codeFragmentService.save(inputCode);
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "application/json");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body("{\n \"id\" : \"" + inputCode.getId() + "\" }");
+        }
+
+        @GetMapping(value = "/code/new")
+        public ResponseEntity<?> createNewCodeWeb() {
+
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.set("Content-Type",
+                    "text/html");
+
+            return ResponseEntity.ok()
+                    .headers(responseHeaders)
+                    .body(getNewCodeForm());
+        }
+
+        @DeleteMapping("/api/deleteAll")
+        public ResponseEntity<?> deleteAll() {
+            codeFragmentService.deleteAll();
+            return new ResponseEntity<>(HttpStatus.OK);
+        }
+    }
+  learner_created: true
+- name: src/platform/Services/CodeFragmentService.java
+  visible: true
+  text: |-
+    package platform.Services;
+
+
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.data.domain.Page;
+    import org.springframework.data.domain.PageRequest;
+    import org.springframework.data.domain.Pageable;
+    import org.springframework.data.domain.Sort;
+    import org.springframework.stereotype.Service;
+    import platform.Models.CodeFragment;
+    import platform.Repositories.CodeFragmentRepository;
+
+    import java.util.List;
+    import java.util.Optional;
+
+    @Service
+    public class CodeFragmentService {
+
+        private final CodeFragmentRepository codeFragmentRepository;
+
+        @Autowired
+        public CodeFragmentService(CodeFragmentRepository codeFragmentRepository) {
+            this.codeFragmentRepository = codeFragmentRepository;
+        }
+
+        public void deleteById(Long id) {
+            this.codeFragmentRepository.deleteById(id);
+        }
+
+        public Page<CodeFragment> findAll (Integer pageNo, Integer pageSize) {
+            Pageable paging = PageRequest.of(pageNo, pageSize);
+
+            Page<CodeFragment> pagedResult = codeFragmentRepository.findAll(paging);
+
+            return pagedResult;
+        }
+
+        public Page<CodeFragment> findLatest () {
+            Pageable paging = PageRequest.of(0, 10, Sort.by("date").descending());
+
+            return codeFragmentRepository.findAll(paging);
+        }
+
+        public Optional<CodeFragment> findById(Long id) {
+            return this.codeFragmentRepository.findById(id);
+        }
+
+        public CodeFragment save(CodeFragment codeFragment) {
+            return this.codeFragmentRepository.save(codeFragment);
+        }
+
+        public void deleteAll() {
+            codeFragmentRepository.deleteAll();
+        }
+    }
+  learner_created: true
+- name: src/platform/Models/CodeFragment.java
+  visible: true
+  text: |
+    package platform.Models;
+
+    import com.fasterxml.jackson.annotation.JsonIgnore;
+    import lombok.AllArgsConstructor;
+    import lombok.Data;
+    import lombok.NoArgsConstructor;
+    import lombok.RequiredArgsConstructor;
+
+    import javax.persistence.*;
+    import java.time.LocalDate;
+    import java.time.LocalDateTime;
+
+    @Entity
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public class CodeFragment {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @JsonIgnore
+        private Long id;
+
+        private String code;
+        private String date;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public String getCode() {
+            return this.code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getDate() {
+            return this.date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+    }
+  learner_created: true
+- name: src/platform/Repositories/CodeFragmentRepository.java
+  visible: true
+  text: |-
+    package platform.Repositories;
+
+    import org.springframework.data.domain.Page;
+    import org.springframework.data.domain.Pageable;
+    import org.springframework.data.repository.PagingAndSortingRepository;
+    import org.springframework.stereotype.Repository;
+    import platform.Models.CodeFragment;
+
+    import java.util.List;
+    import java.util.Optional;
+
+    @Repository
+    public interface CodeFragmentRepository extends PagingAndSortingRepository<CodeFragment, Long> {
+        void deleteById(Long id);
+        //List<CodeFragment> findAll();
+
+        Optional<CodeFragment> findById(Long id);
+        CodeFragment save(CodeFragment codeFragment);
+        void deleteAll();
+
+    }
+  learner_created: true
+- name: test/New Text Document.txt
+  visible: true
+  learner_created: true
+- name: test/Blockchain.java
+  visible: true
+  learner_created: true
+- name: test/Person.txt
+  visible: true
+  learner_created: true
+- name: test/StringUtil.java
+  visible: true
+  learner_created: true
+- name: test/StringUtil.txt
+  visible: true
+  learner_created: true
+- name: test/Transaction.txt
+  visible: true
+  learner_created: true
+- name: test/Block.java
+  visible: true
+  learner_created: true
+- name: test/SerializationUtils.java
+  visible: true
+  learner_created: true
+- name: test/Solvent.txt
+  visible: true
+  learner_created: true
+- name: test/Worker.java
+  visible: true
+  learner_created: true
+- name: test/Block.txt
+  visible: true
+  learner_created: true
+- name: test/Miner.java
+  visible: true
+  learner_created: true
+- name: test/Main.java
+  visible: true
+  learner_created: true
+- name: test/Main.txt
+  visible: true
+  learner_created: true
+- name: test/PathConstants.txt
+  visible: true
+  learner_created: true
+- name: test/Serialization.java
+  visible: true
+  learner_created: true
+- name: test/SerializationUtils.txt
+  visible: true
+  learner_created: true
+- name: test/GenerateKeys.java
+  visible: true
+  learner_created: true
+- name: test/Blockchain.txt
+  visible: true
+  learner_created: true
+- name: test/GenerateKeys.txt
+  visible: true
+  learner_created: true
+- name: test/Shop.java
+  visible: true
+  learner_created: true
+- name: test/Shop.txt
+  visible: true
+  learner_created: true
+- name: test/Person.java
+  visible: true
+  learner_created: true
+- name: test/Solvent.java
+  visible: true
+  learner_created: true
+- name: test/Cryptography.txt
+  visible: true
+  learner_created: true
+- name: test/Miner.txt
+  visible: true
+  learner_created: true
+- name: test/Serialization.txt
+  visible: true
+  learner_created: true
+- name: test/Transaction.java
+  visible: true
+  learner_created: true
+- name: test/Cryptography.java
+  visible: true
+  learner_created: true
+- name: test/Worker.txt
+  visible: true
+  learner_created: true
+- name: test/CodeSharingPlatformTest.java
+  visible: true
+  learner_created: true
+- name: test/World.java
+  visible: true
+  learner_created: true
+- name: test/World.txt
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/11031#comment
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">JetBrains
+    Academy</a> to continue learning.
+  time: Thu, 23 Sep 2021 02:23:43 UTC
+record: -1

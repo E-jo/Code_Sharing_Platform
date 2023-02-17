@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.20/18bcea7d5df4d49227b4a0743a536208ce4825bb/lombok-1.18.20.jar" />
+        </processorPath>
+        <module name="Code_Sharing_Platform.Code_Sharing_Platform-task.test" />
+        <module name="Code_Sharing_Platform.Code_Sharing_Platform-task.main" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel target="17">
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-classes-java.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-generated-sources-annotationProcessor-java.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-generated-sources-headers-java.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-reports-tests.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-test-results.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task-build-tmp.main" target="14" />
+      <module name="Code_Sharing_Platform.Code_Sharing_Platform-task.main" target="14" />
+      <module name="Code_Sharing_Platform.util.main" target="14" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
